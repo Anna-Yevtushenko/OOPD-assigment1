@@ -1,229 +1,170 @@
 #include <iostream>
-#include <string>
-#include <vector>
 #include <map>
-#include <fstream>
+#include <string>
 #include <sstream>
-
+#include <vector>
 using namespace std;
 
-class Ticket {
-private:
-    string passengerName;
-    string seatNumber;
-    bool seatAvailability;
-    string flightNumber;
-    double ticketPrice;
-    int bookingID;
+//uint8_t
+//uint_16t
 
+
+class Seat {
 public:
-    Ticket() : passengerName("Unknown"), seatNumber("Unknown"), seatAvailability(false), flightNumber("Unknown"), ticketPrice(0.0), bookingID(0) {
-    }
-
-    Ticket(string name, string seat, string flight, double price, int id)
-        : passengerName(name), seatNumber(seat), flightNumber(flight), ticketPrice(price), bookingID(id), seatAvailability(true) {}
-
-    ~Ticket() {}
-
-    string getPassengerName() const {
-        return passengerName;
-    }
-
-    string getSeatNumber() const { 
-        return seatNumber;
-    }
-
-    bool getSeatAvailability() const {
-        return seatAvailability;
-    }
-
-    string getFlightNumber() const {
-        return flightNumber;
-    }
-
-    double getTicketPrice() const {
-        return ticketPrice;
-    }
-
-    int getBookingID() const { 
-        return bookingID; 
-    }
-
-    void cancelBooking() { 
-        seatAvailability = false; 
-    }
-
-    void printTicketInfo() const {
-        cout << "Passenger: " << passengerName << ", Seat: " << seatNumber
-            << ", Flight: " << flightNumber << ", Price: $" << ticketPrice
-            << ", Booking ID: " << bookingID << endl;
-    }
+    string id;
+    double price;
+    string status; // "free", "booked"
 };
+
+class SeatRange {
+public:
+    int startRow;
+    int endRow;
+    double price;
+};
+
+
 
 class Airplane {
-private:
-    string flightNumber;
-    string flightDate;
-    map<string, bool> seatAvailability;
-    map<int, Ticket> bookedTickets;  
-    map<string, double> rowPrices;  
-    int bookingCounter;  
-
 public:
-    Airplane(string flightnumber, string date, vector<string> seats, map<string, double> prices)
-        : flightNumber(flightnumber), flightDate(date), rowPrices(prices), bookingCounter(1) {
-        for (const auto& seat : seats) {
-            seatAvailability[seat] = false;  
-        }
-    }
-
-    bool isSeatAvailable(string seatNumber) {  
-              
-        if (seatAvailability.find(seatNumber) != seatAvailability.end()) {
-            return !seatAvailability[seatNumber];  
-        } else {
-            cout << "The ticket with number: [" << seatNumber << "] is not found" << endl;
-            return false;
-        }
-    }
+    string flight_no;
+    string date;
+    int number_seats;
+    map<string, Seat> seats;
+    vector<SeatRange> seatRanges;
 
 
-
-    void bookSeat(const string& flightNo, const string& seatNumber, const string& username) {
-
-        if (flightNo != flightNumber) {
-            cout << "Error: Flight number does not match. Can't book seat on flight " << flightNo << endl;
-            return;  
-        }
-        if (isSeatAvailable(seatNumber)) {
-            seatAvailability[seatNumber] = true;
-            int bookingID = bookingCounter++;
-
-            cout << "Booking seat: [" << seatNumber << "]" << endl;
-            cout << "Seat number length: " << seatNumber.length() << endl;
-
-
-            string row = "";
-            for (char ch : seatNumber) {
-                if (isdigit(ch)) {
-                    row += ch;  
-                } else {
-                    break;  
+    void initializeSeats() {
+        for (const auto& range : seatRanges) {
+            for (int row = range.startRow; row <= range.endRow; ++row) {
+                for (char seat = 'A'; seat <= 'D'; ++seat) { // Guess,that there are 4 places in the row : A, B, C, D
+                    string seatId = to_string(row) + seat;
+                    seats[seatId] = {seatId, range.price, "free"};
                 }
-            } 
-
-            cout << "Row extracted: " << row << endl;
-
-
-            if (rowPrices.find(row) == rowPrices.end()) {
-                cout << "Error: No price for row " << row << endl;
-                return;
             }
-
-            double ticketPrice = rowPrices[row];   
-            Ticket newTicket(username, seatNumber, flightNo, ticketPrice, bookingID);
-            bookedTickets[bookingID] = newTicket;  
-
-            cout << "Seat " << seatNumber << " has been successfully booked for " << username << " at price $" << ticketPrice << endl;
-            cout << "Confirmed with Booking ID: " << bookingID << endl;
-
-        } 
-        else {
-            cout << "Seat " << seatNumber << " is already booked or not available." << endl;
         }
-    }    
+    }
 
 
+    void checkAvailability() const {
+        cout << "Availible seats " << flight_no << " on date " << date << ":\n";
+        for (const auto& seat : seats) {
+            if (seat.second.status == "free") {
+                cout << seat.second.id << " " << seat.second.price << "$, ";
+            }
+        }
+        cout << endl;
+    }
 };
 
-vector<string> generateSeats(int seatsPerRow, int rows) {
-    vector<string> seats;
-    string seatLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    for (int row = 1; row <= rows; ++row) {
-        for (int seat = 0; seat < seatsPerRow; ++seat) {
-            seats.push_back(to_string(row) + seatLetters[seat]);  
+
+
+class Ticket {
+public:
+    int id;
+    string username;
+    string seat_number;
+    string flight_no;
+};
+
+
+class AirlineSystem {
+public:
+    map<string, Airplane> airplanes;
+    map<int, Ticket> tickets;
+
+
+    void fillAirplaneFromLine(Airplane& plane, const string& line) {
+        istringstream iss(line);
+        iss >> plane.date >> plane.flight_no >> plane.number_seats;
+
+        string seatRange;
+        int startRow, endRow;
+        double price;
+        char dash, dollar;
+
+        while (iss >> startRow >> dash >> endRow >> price >> dollar) {
+            if (dollar != '$') {
+                cout << "Format mistake" << endl;
+                return;
+            }
+            plane.seatRanges.push_back({startRow, endRow, price});
         }
+
+        plane.initializeSeats();
     }
-    return seats;
-}
+
+ 
+    void checkFlight(const string& date, const string& flight_no) const {
+        for (const auto& airplane : airplanes) {
+            if (airplane.second.date == date && airplane.second.flight_no == flight_no) {
+                airplane.second.checkAvailability();
+                return;
+            }
+        }
+        cout << "Record diid not find or date is not correct.\n";
+    }
+};
+
 
 int main() {
-    ifstream file("D:/OOPD/OOPD-assigment1/ConsoleApplication1/ConsoleApplication1/configurationFile.txt");
-    if (!file.is_open()) {
-        cout << "Error with opening file" << endl;
-        return 1;
+    AirlineSystem system;
+
+
+    Airplane plane1;
+    string line1 = "01.01.2023 JK321 8 1-10 100$ 11-20 90$ 21-30 50$";
+    system.fillAirplaneFromLine(plane1, line1);
+    system.airplanes[plane1.flight_no] = plane1;
+
+
+    Airplane plane2;
+    string line2 = "03.01.2023 LM654 9 1-25 95$ 26-50 65$";
+    system.fillAirplaneFromLine(plane2, line2);
+    system.airplanes[plane2.flight_no] = plane2;
+
+
+    Airplane plane3;
+    string line3 = "01.09.2023 JK324 8 1-10 100$ 11-20 90$ 21-30 50$";
+    system.fillAirplaneFromLine(plane3, line3);
+    system.airplanes[plane3.flight_no] = plane3;
+
+  
+    string command = "check 01.01.2023 JK321"; 
+    istringstream iss(command);
+    string cmd, date, flight_no;
+    iss >> cmd >> date >> flight_no;
+
+
+
+    if (cmd == "check") {
+        system.checkFlight(date, flight_no);
+    } else {
+        cout << "Unknow command." << endl;
     }
 
-    int numberRecords;
-    file >> numberRecords;
-    string line;
-    getline(file, line);
+    
+    command = "check 03.01.2023 LM654"; 
+    istringstream iss2(command);
+    iss2 >> cmd >> date >> flight_no;
 
-    vector<Airplane> airplanes;  
-
-    for (int i = 0; i < numberRecords; i++) {  
-        getline(file, line);
-        cout << line << endl;
-        stringstream ss(line);
-        string flightDate, flightNumber;
-        string rowRange1, rowRange2;
-        string priceStr1, priceStr2;
-        int seatsPerRow;
-        ss >> flightDate >> flightNumber >> seatsPerRow >> rowRange1 >> priceStr1 >> rowRange2 >> priceStr2;
-
-        string rowRange1Clean = "", rowRange2Clean = "", priceStr1Clean = "", priceStr2Clean = "";
-
-        for (char ch : rowRange1) {
-            if (ch != '-') {
-                rowRange1Clean += ch;  
-            }
-        }
-
-        for (char ch : rowRange2) {
-            if (ch != '-') {
-                rowRange2Clean += ch;  
-            }
-        }
-
-        for (char ch : priceStr1) {
-            if (ch != '$') {
-                priceStr1Clean += ch;  
-            }
-        }
-
-        for (char ch : priceStr2) {
-            if (ch != '$') {
-                priceStr2Clean += ch;  
-            }
-        }
-
-        int rowStart1 = stoi(rowRange1Clean.substr(0, 1));
-        int rowEnd1 = stoi(rowRange1Clean.substr(1));
-        int rowStart2 = stoi(rowRange2Clean.substr(0, 2));
-        int rowEnd2 = stoi(rowRange2Clean.substr(2));
-        double price1 = stod(priceStr1Clean);
-        double price2 = stod(priceStr2Clean);
-
-        vector<string> seats = generateSeats(seatsPerRow, rowEnd2);
-        map<string, double> rowPrice;
-
-        for (int row = rowStart1; row <= rowEnd1; row++) {
-            rowPrice[to_string(row)] = price1;
-        }
-        for (int row = rowStart2; row <= rowEnd2; row++) {
-            rowPrice[to_string(row)] = price2;
-        }
-
-
-        Airplane airplane(flightNumber, flightDate, seats, rowPrice);
-        airplanes.push_back(airplane);
+    if (cmd == "check") {
+        system.checkFlight(date, flight_no);
+    } else {
+        cout << "Unknow command." << endl;
     }
 
 
-    airplanes[0].bookSeat("FQ12", "8A", "JohnDoe");  
-    airplanes[1].bookSeat("FQ132", "30A", "John");    
 
-    file.close();
+    command = "check 01.09.2023 JK324 ";
+    istringstream iss3(command);
+    iss3 >> cmd >> date >> flight_no;
+
+    if (cmd == "check") {
+        system.checkFlight(date, flight_no);
+    } else {
+        cout << "Unknow command." << endl;
+    }
+
+
     return 0;
 }
-
