@@ -17,15 +17,13 @@ public:
 };
 
 class SeatRange {
-    
+
 public:
     int startRow;
     int endRow;
     double price;
     int seatsPerRow;  
 };
-
-
 
 
 
@@ -113,13 +111,13 @@ public:
                 airplane.second.seats[seatId].status = "booked";
 
                 Ticket ticket;
-                ticket.id = ticketcounter + 1;
+                ticket.id = ticketcounter ++;
                 ticket.username = username;
                 ticket.seat_number = seatId;
                 ticket.flight_no = flight_no;
                 tickets[ticket.id] = ticket;
 
-                cout << "Confirmed with ID " << endl;
+                cout << "Confirmed with ID " <<seatId << endl;
                
 
             }
@@ -129,6 +127,24 @@ public:
             return;
         }
         cout << "flight not found or data is incorrect" << endl;
+    }
+
+    void returnTicket(int ticketId) {
+        if (tickets.count(ticketId) == 0) {
+            cout << "Ticket not found" << endl;
+            return;
+        }
+
+        Ticket& ticket = tickets[ticketId];
+        Airplane& airplane = airplanes[ticket.flight_no];
+
+        if (airplane.seats[ticket.seat_number].status == "booked") {
+            airplane.seats[ticket.seat_number].status = "free";
+            cout << "Confirmed " << airplane.seats[ticket.seat_number].price << "$ refund for " << ticket.username << endl;
+            tickets.erase(ticketId);  
+        } else {
+            cout << "The seat is already free" << endl;
+        }
     }
      
 
@@ -157,22 +173,34 @@ int main() {
         //"check 01.09.2023 JK324",
         "book 01.01.2023 JK321 1A AdamSmith",
         "book 01.01.2023 JK321 2A JohnDoe", 
+        "book 01.01.2023 JK321 1A JoîîîîhnDoe",
+        "return 1" ,
         "book 01.01.2023 JK321 1A JoîîîîhnDoe"
+        //"check 01.01.2023 JK321",
     };
 
     for (const string& command : commands) {
         istringstream iss(command);
-        string cmd, date, flight_no, seatId, username;
-        iss >> cmd >> date >> flight_no;
+        string cmd;
+        iss >> cmd;
 
         if (cmd == "check") {
+            string date, flight_no;
+            iss >> date >> flight_no;
             system.checkFlight(date, flight_no);
-        } else if (cmd == "book" && (iss >> seatId >> username)) {
+        } else if (cmd == "book") {
+            string date, flight_no, seatId, username;
+            iss >> date >> flight_no >> seatId >> username;
             system.bookSeat(date, flight_no, seatId, username);
+        } else if (cmd == "return") {
+            int ticketId;
+            iss >> ticketId;  
+            system.returnTicket(ticketId);
         } else {
             cout << "Unknown command." << endl;
         }
     }
+
 
     return 0;
 }
