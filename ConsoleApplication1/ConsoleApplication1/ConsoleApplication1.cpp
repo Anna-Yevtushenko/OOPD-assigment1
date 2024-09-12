@@ -105,32 +105,50 @@ public:
     }
 
 
-    void bookSeat(const string& date, const string& flight_no, const string& seatId, const string& username ){
+    void bookSeat(const string& date, const string& flight_no, const string& seatId, const string& username) {
 
-
-
-        for (auto& airplane : airplanes) {
-            if (airplane.second.date == date && airplane.second.seats[seatId].status == "free") {
-                airplane.second.seats[seatId].status = "booked";
-
-                Ticket ticket;
-                ticket.id = ticketcounter ++;
-                ticket.username = username;
-                ticket.seat_number = seatId;
-                ticket.flight_no = flight_no;
-                tickets[ticket.id] = ticket;
-
-                cout << "Confirmed with ID " <<seatId << endl;
-               
-
-            }
-            else {
-                cout << "The seat is booked or doesn't exist." << endl;
-            }
+        if (airplanes.find(flight_no) == airplanes.end()) {
+            cout << "Flight not found or date is`n correct ";
             return;
         }
-        cout << "flight not found or data is incorrect" << endl;
+
+        Airplane& airplane = airplanes[flight_no];
+
+        if (airplane.date != date) {
+            cout << "Date is incorrect" << endl;
+            return;
+        }
+
+        if (airplane.seats.find(seatId) == airplane.seats.end()) {
+            cout << "Seat doesn`t exist for flight " << airplane.flight_no << endl;
+            return;
+
+        }
+
+
+        if (airplane.seats[seatId].status == "free") {
+            airplane.seats[seatId].status = "booked";
+
+            Ticket ticket;
+            ticket.id = ticketcounter++;
+            ticket.username = username;
+            ticket.seat_number = seatId;
+            ticket.flight_no = flight_no;
+            ticket.price = airplane.seats[seatId].price;
+
+            tickets[ticket.id] = ticket;
+
+            cout << "Confirmed with ID " << seatId << endl;
+
+
+        }
+        else {
+            cout << "Seat is already booked or does not exist." << endl;
+        }
+
     }
+
+
 
     void returnTicket(int ticketId) {
         if (tickets.count(ticketId) == 0) {
@@ -151,41 +169,40 @@ public:
     }
 
 
-    void view(int ticketId) const{ 
-
+    void view(int ticketId) const {
         if (tickets.find(ticketId) == tickets.end()) {
             cout << "Ticket not found.\n";
             return;
         }
+
         const Ticket& ticket = tickets.at(ticketId);
         const Airplane& airplane = airplanes.at(ticket.flight_no);
-        cout << "Flight " << ticket.flight_no << ", " << airplane.date << ", seat " 
-            << ticket.seat_number<<", price "<<ticket.price<<"$,"<<ticket.username << endl;
+        cout << "Flight " << ticket.flight_no << ", " << airplane.date 
+            << ", seat " << ticket.seat_number << ", price " 
+            << ticket.price << "$, " << ticket.username << endl;
     }
 
-    void view(const string& username){
+    void view(const string& username) {
+        bool found = false;
         for (const auto& pair : tickets) {
             const int& id = pair.first;
             const Ticket& ticket = pair.second;
             const Airplane& airplane = airplanes.at(ticket.flight_no);
+
             if (ticket.username == username) {
-                cout << "Flight " << ticket.flight_no << ", " 
-                    << airplane.date << ", seat " << ticket.seat_number << ", price " 
-                    << ticket.price << "$,"<< endl;
+                cout << "Flight " << ticket.flight_no << ", " << airplane.date 
+                    << ", seat " << ticket.seat_number << ", price " 
+                    << ticket.price << "$," << endl;
+                found = true;
             }
+        }
+
+        if (!found) {
+            cout << "No tickets found for user: " << username << endl;
         }
     }
 
-
-
-
-  
-     
-
 };
-
-
-
 
 
 
@@ -193,6 +210,7 @@ public:
 int main() {
     AirlineSystem system;
     Airplane plane1, plane2, plane3;
+
     string line1 = "01.01.2023 JK321 8 1-10 100$ 11-20 90$ 21-30 50$";
     string line2 = "03.01.2023 LM654 9 1-25 95$ 26-50 65$";
     string line3 = "01.09.2023 JK324 8 1-10 100$ 11-20 90$ 21-30 50$";
@@ -205,20 +223,17 @@ int main() {
     system.airplanes[plane2.flight_no] = plane2;
     system.airplanes[plane3.flight_no] = plane3;
 
-
     string commands[] = {
         "check 01.01.2023 JK321",
-        //"check 03.01.2023 LM654",
-        //"check 01.09.2023 JK324",
         "book 01.01.2023 JK321 1A AdamSmith",
         "book 01.01.2023 JK321 2A JohnDoe", 
+        //"book 01.01.2023 JK321 1A JoîîîîhnDoe",
+        //"return 1",
         "book 01.01.2023 JK321 1A JoîîîîhnDoe",
-        "return 1" ,
-        "book 01.01.2023 JK321 1A JoîîîîhnDoe"
-        "view 1", 
+        "view 1",
         "view AdamSmith"
-        //"check 01.01.2023 JK321",
     };
+
 
     for (const string& command : commands) {
         istringstream iss(command);
@@ -229,14 +244,17 @@ int main() {
             string date, flight_no;
             iss >> date >> flight_no;
             system.checkFlight(date, flight_no);
+
         } else if (cmd == "book") {
             string date, flight_no, seatId, username;
             iss >> date >> flight_no >> seatId >> username;
             system.bookSeat(date, flight_no, seatId, username);
+
         } else if (cmd == "return") {
             int ticketId;
-            iss >> ticketId;  
+            iss >> ticketId;
             system.returnTicket(ticketId);
+
         } else if (cmd == "view") {
             string param1;
             iss >> param1;
@@ -246,16 +264,15 @@ int main() {
                 int ticketId = stoi(param1);
                 cout << "Viewing ticket by ID: " << ticketId << endl;
                 system.view(ticketId);
-            
+
             } else {  
                 cout << "Viewing tickets for user: " << param1 << endl;
-                system.view(param1); 
+                system.view(param1);
             }
         } else {
             cout << "Unknown command: " << cmd << endl;
         }
     }
-
 
     return 0;
 }
