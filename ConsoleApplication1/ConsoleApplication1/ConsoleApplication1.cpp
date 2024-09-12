@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 using namespace std;
 
 //uint8_t
@@ -140,14 +141,12 @@ public:
 
             cout << "Confirmed with ID " << seatId << endl;
 
-
         }
         else {
             cout << "Seat is already booked or does not exist." << endl;
         }
 
     }
-
 
 
     void returnTicket(int ticketId) {
@@ -196,14 +195,31 @@ public:
                 found = true;
             }
         }
-
         if (!found) {
             cout << "No tickets found for user: " << username << endl;
         }
     }
 
-};
+    void view(const string& date, const string& flight_no) const {
+        bool found = false;
+        for (const auto& pair : tickets) {
+            const Ticket& ticket = pair.second;
 
+            if (ticket.flight_no == flight_no && airplanes.at(flight_no).date == date) {
+                cout << "Flight " << ticket.flight_no << ", " << airplanes.at(ticket.flight_no).date
+                    << ", seat " << ticket.seat_number << ", price " << ticket.price
+                    << "$, User: " << ticket.username << endl;
+                found = true;
+            }
+        }
+
+        if (!found) {
+            cout << "No tickets found for flight: " << flight_no << " on date: " << date << endl;
+        }
+    }
+
+
+};
 
 
 
@@ -224,14 +240,15 @@ int main() {
     system.airplanes[plane3.flight_no] = plane3;
 
     string commands[] = {
-        "check 01.01.2023 JK321",
+        //"check 01.01.2023 JK321",
         "book 01.01.2023 JK321 1A AdamSmith",
-        "book 01.01.2023 JK321 2A JohnDoe", 
+        "book 01.01.2023 JK321 2A JohnDoe",
         //"book 01.01.2023 JK321 1A JoîîîîhnDoe",
         //"return 1",
-        "book 01.01.2023 JK321 1A JoîîîîhnDoe",
-        "view 1",
-        "view AdamSmith"
+        //"book 01.01.2023 JK321 1A JoîîîîhnDoe",
+        //"view 1",
+        //"view AdamSmith",
+        "view 01.01.2023 JK321",
     };
 
 
@@ -245,34 +262,49 @@ int main() {
             iss >> date >> flight_no;
             system.checkFlight(date, flight_no);
 
-        } else if (cmd == "book") {
+        }
+        else if (cmd == "book") {
             string date, flight_no, seatId, username;
             iss >> date >> flight_no >> seatId >> username;
             system.bookSeat(date, flight_no, seatId, username);
 
-        } else if (cmd == "return") {
+        }
+        else if (cmd == "return") {
             int ticketId;
             iss >> ticketId;
             system.returnTicket(ticketId);
 
-        } else if (cmd == "view") {
+        }
+        else if (cmd == "view") {
             string param1;
             iss >> param1;
             cout << "Processing view command with param1: " << param1 << endl;
 
-            if (isdigit(param1[0])) {  
+            
+            if (all_of(param1.begin(), param1.end(), ::isdigit)) {  
                 int ticketId = stoi(param1);
                 cout << "Viewing ticket by ID: " << ticketId << endl;
                 system.view(ticketId);
 
-            } else {  
+            }
+            else if (param1.find('.') != string::npos) { 
+                string flight_no;
+                iss >> flight_no;
+                cout << "Viewing tickets for date: " << param1 << " and flight: " << flight_no << endl;
+                system.view(param1, flight_no);
+            }
+            else {  
                 cout << "Viewing tickets for user: " << param1 << endl;
                 system.view(param1);
             }
-        } else {
+        }
+        else {
             cout << "Unknown command: " << cmd << endl;
         }
     }
 
     return 0;
+
+
 }
+    
