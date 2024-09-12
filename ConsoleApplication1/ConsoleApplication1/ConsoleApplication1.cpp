@@ -68,6 +68,7 @@ public:
     string username;
     string seat_number;
     string flight_no;
+    double price;
 };
 
 
@@ -105,6 +106,8 @@ public:
 
 
     void bookSeat(const string& date, const string& flight_no, const string& seatId, const string& username ){
+
+
 
         for (auto& airplane : airplanes) {
             if (airplane.second.date == date && airplane.second.seats[seatId].status == "free") {
@@ -146,9 +149,45 @@ public:
             cout << "The seat is already free" << endl;
         }
     }
+
+
+    void view(int ticketId) const{ 
+
+        if (tickets.find(ticketId) == tickets.end()) {
+            cout << "Ticket not found.\n";
+            return;
+        }
+        const Ticket& ticket = tickets.at(ticketId);
+        const Airplane& airplane = airplanes.at(ticket.flight_no);
+        cout << "Flight " << ticket.flight_no << ", " << airplane.date << ", seat " 
+            << ticket.seat_number<<", price "<<ticket.price<<"$,"<<ticket.username << endl;
+    }
+
+    void view(const string& username){
+        for (const auto& pair : tickets) {
+            const int& id = pair.first;
+            const Ticket& ticket = pair.second;
+            const Airplane& airplane = airplanes.at(ticket.flight_no);
+            if (ticket.username == username) {
+                cout << "Flight " << ticket.flight_no << ", " 
+                    << airplane.date << ", seat " << ticket.seat_number << ", price " 
+                    << ticket.price << "$,"<< endl;
+            }
+        }
+    }
+
+
+
+
+  
      
 
 };
+
+
+
+
+
 
 
 int main() {
@@ -176,6 +215,8 @@ int main() {
         "book 01.01.2023 JK321 1A JoîîîîhnDoe",
         "return 1" ,
         "book 01.01.2023 JK321 1A JoîîîîhnDoe"
+        "view 1", 
+        "view AdamSmith"
         //"check 01.01.2023 JK321",
     };
 
@@ -196,8 +237,22 @@ int main() {
             int ticketId;
             iss >> ticketId;  
             system.returnTicket(ticketId);
+        } else if (cmd == "view") {
+            string param1;
+            iss >> param1;
+            cout << "Processing view command with param1: " << param1 << endl;
+
+            if (isdigit(param1[0])) {  
+                int ticketId = stoi(param1);
+                cout << "Viewing ticket by ID: " << ticketId << endl;
+                system.view(ticketId);
+            
+            } else {  
+                cout << "Viewing tickets for user: " << param1 << endl;
+                system.view(param1); 
+            }
         } else {
-            cout << "Unknown command." << endl;
+            cout << "Unknown command: " << cmd << endl;
         }
     }
 
