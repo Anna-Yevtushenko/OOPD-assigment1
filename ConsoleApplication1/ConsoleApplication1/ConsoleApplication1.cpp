@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <fstream>
 #include <algorithm>
 using namespace std;
 
@@ -17,6 +18,8 @@ public:
     string status; // "free", "booked"
 };
 
+
+
 class SeatRange {
 
 public:
@@ -29,12 +32,41 @@ public:
 
 
 class Airplane {
-public:
+private:
     string flight_no;
     string date;
     int number_seats;
     map<string, Seat> seats;
     vector<SeatRange> seatRanges;
+
+public:
+    Airplane() = default;
+
+    Airplane(const string& flight, const string& flightDate, int seats, const vector<SeatRange>& ranges)
+        : flight_no(flight), date(flightDate), number_seats(seats), seatRanges(ranges) {
+        initializeSeats();  
+    }
+
+        string getDate() const { 
+            return date; 
+        }
+
+        string getFlightNo() const { 
+            return flight_no; 
+        }
+
+    int getNumberSeats() const { 
+        return number_seats; 
+    }
+
+    map<string, Seat>& getSeats() {
+        return seats; 
+    }
+
+    const vector<SeatRange>& getSeatRanges() const { 
+        return seatRanges; 
+    }
+
 
 
     void initializeSeats() {
@@ -42,131 +74,152 @@ public:
             for (int row = range.startRow; row <= range.endRow; ++row) {
                 for (char seat = 'A'; seat < 'A' + range.seatsPerRow; ++seat) {
                     string seatId = to_string(row) + seat;
-                    seats[seatId] = {seatId, range.price, "free"};  
+                    seats[seatId] = {seatId, range.price, "free"};
                 }
             }
         }
     }
 
-
-
     void checkAvailability() const {
-        cout << "Availible seats " << flight_no << " on date " << date << ":\n";
+        cout << "Available seats for flight " << flight_no << " on date " << date << ":\n";
         for (const auto& seat : seats) {
             if (seat.second.status == "free") {
-                cout << seat.second.id << " " << seat.second.price << "$, ";
+                cout << seat.second.id << " - " << seat.second.price << "$\n";
             }
         }
-        cout << endl;
     }
 };
 
 
-
 class Ticket {
-public:
+private:
     int id;
     string username;
     string seat_number;
     string flight_no;
     double price;
+
+public:
+
+    Ticket() = default;
+
+    Ticket(int idValue, const string& user, const string& seat, const string& flight, double priceValue)
+        : id(idValue), username(user), seat_number(seat), flight_no(flight), price(priceValue) {}
+
+    int getId() const { 
+        return id; 
+    }
+
+    string getUsername() const { 
+        return username; 
+    }
+
+    string getSeatNumber() const { 
+        return seat_number; 
+    }
+
+    string getFlightNo() const { 
+        return flight_no; 
+    
+   }
+
+    double getPrice() const { 
+        return price; 
+    }
+
 };
+
+
 
 
 class AirlineSystem {
 public:
     map<string, Airplane> airplanes;
     map<int, Ticket> tickets;
-    int ticketcounter = 1;
+    int ticketCounter = 1;
 
-
-    void fillAirplaneFromLine(Airplane& plane, const string& line) {
+    void fillAirplaneFromLine(Airplane& airplane, const string& line) {
         istringstream iss(line);
         int startRow, endRow;
         double price;
-        char dash;
+        char dash, dollar;
+        string date, flight_no;
+        int number_seats;
 
-        iss >> plane.date >> plane.flight_no >> plane.number_seats;
-        while (iss >> startRow >> dash >> endRow >> price) {
-            plane.seatRanges.push_back(SeatRange{startRow, endRow, price, plane.number_seats});
+        iss >> date >> flight_no >> number_seats;
+
+        vector<SeatRange> seatRanges;
+        while (iss >> startRow >> dash >> endRow >> price >> dollar) {
+            if (dollar != '$') {
+                cout << "Format error: expected $ after price." << endl;
+                return;
+            }
+            seatRanges.push_back(SeatRange{startRow, endRow, price, number_seats});
         }
 
-        plane.initializeSeats();
+        airplane = Airplane(flight_no, date, number_seats, seatRanges);
     }
 
-
     void checkFlight(const string& date, const string& flight_no) const {
-        for (const auto& airplane : airplanes) {
-            if (airplane.second.date == date && airplane.second.flight_no == flight_no) {
-                airplane.second.checkAvailability();
+        if (airplanes.find(flight_no) != airplanes.end()) {
+            const Airplane& airplane = airplanes.at(flight_no);
+            if (airplane.getDate() == date) {
+                airplane.checkAvailability();  
                 return;
             }
         }
-        cout << "Record diid not find or date is not correct.\n";
+        cout << "Record not found or incorrect date.\n";
     }
 
-
     void bookSeat(const string& date, const string& flight_no, const string& seatId, const string& username) {
-
         if (airplanes.find(flight_no) == airplanes.end()) {
-            cout << "Flight not found or date is`n correct ";
+            cout << "Flight not found or incorrect date.\n";
             return;
         }
 
         Airplane& airplane = airplanes[flight_no];
 
-        if (airplane.date != date) {
-            cout << "Date is incorrect" << endl;
+        if (airplane.getDate() != date) {
+            cout << "Date is incorrect.\n";
             return;
         }
 
-        if (airplane.seats.find(seatId) == airplane.seats.end()) {
-            cout << "Seat doesn`t exist for flight " << airplane.flight_no << endl;
+        auto& seats = airplane.getSeats();
+        if (seats.find(seatId) == seats.end()) {
+            cout << "Seat doesn't exist for flight " << airplane.getFlightNo() << endl;
             return;
-
         }
 
+        if (seats[seatId].status == "free") {
+            seats[seatId].status = "booked";
 
-        if (airplane.seats[seatId].status == "free") {
-            airplane.seats[seatId].status = "booked";
+            Ticket ticket(ticketCounter++, username, seatId, flight_no, seats[seatId].price);
+            tickets[ticket.getId()] = ticket;
 
-            Ticket ticket;
-            ticket.id = ticketcounter++;
-            ticket.username = username;
-            ticket.seat_number = seatId;
-            ticket.flight_no = flight_no;
-            ticket.price = airplane.seats[seatId].price;
-
-            tickets[ticket.id] = ticket;
-
-            cout << "Confirmed with ID " << seatId << endl;
-
+            cout << "Booking confirmed with seat ID " << seatId << endl;
+        } else {
+            cout << "Seat is already booked.\n";
         }
-        else {
-            cout << "Seat is already booked or does not exist." << endl;
-        }
-
     }
 
-
     void returnTicket(int ticketId) {
-        if (tickets.count(ticketId) == 0) {
-            cout << "Ticket not found" << endl;
+        if (tickets.find(ticketId) == tickets.end()) {
+            cout << "Ticket not found.\n";
             return;
         }
 
         Ticket& ticket = tickets[ticketId];
-        Airplane& airplane = airplanes[ticket.flight_no];
+        Airplane& airplane = airplanes[ticket.getFlightNo()];
 
-        if (airplane.seats[ticket.seat_number].status == "booked") {
-            airplane.seats[ticket.seat_number].status = "free";
-            cout << "Confirmed " << airplane.seats[ticket.seat_number].price << "$ refund for " << ticket.username << endl;
+        auto& seats = airplane.getSeats();
+        if (seats[ticket.getSeatNumber()].status == "booked") {
+            seats[ticket.getSeatNumber()].status = "free";
+            cout << "Refund confirmed for " << seats[ticket.getSeatNumber()].price << "$ to " << ticket.getUsername() << endl;
             tickets.erase(ticketId);  
         } else {
-            cout << "The seat is already free" << endl;
+            cout << "The seat is already free.\n";
         }
     }
-
 
     void view(int ticketId) const {
         if (tickets.find(ticketId) == tickets.end()) {
@@ -175,10 +228,10 @@ public:
         }
 
         const Ticket& ticket = tickets.at(ticketId);
-        const Airplane& airplane = airplanes.at(ticket.flight_no);
-        cout << "Flight " << ticket.flight_no << ", " << airplane.date 
-            << ", seat " << ticket.seat_number << ", price " 
-            << ticket.price << "$, " << ticket.username << endl;
+        const Airplane& airplane = airplanes.at(ticket.getFlightNo());
+        cout << "Flight " << ticket.getFlightNo() << ", " << airplane.getDate()
+            << ", seat " << ticket.getSeatNumber() << ", price " 
+            << ticket.getPrice() << "$, " << ticket.getUsername() << endl;
     }
 
     void view(const string& username) {
@@ -186,12 +239,12 @@ public:
         for (const auto& pair : tickets) {
             const int& id = pair.first;
             const Ticket& ticket = pair.second;
-            const Airplane& airplane = airplanes.at(ticket.flight_no);
+            const Airplane& airplane = airplanes.at(ticket.getFlightNo());
 
-            if (ticket.username == username) {
-                cout << "Flight " << ticket.flight_no << ", " << airplane.date 
-                    << ", seat " << ticket.seat_number << ", price " 
-                    << ticket.price << "$," << endl;
+            if (ticket.getUsername() == username) {
+                cout << "Flight " << ticket.getFlightNo() << ", " << airplane.getDate()
+                    << ", seat " << ticket.getSeatNumber() << ", price " 
+                    << ticket.getPrice() << "$" << endl;
                 found = true;
             }
         }
@@ -205,10 +258,10 @@ public:
         for (const auto& pair : tickets) {
             const Ticket& ticket = pair.second;
 
-            if (ticket.flight_no == flight_no && airplanes.at(flight_no).date == date) {
-                cout << "Flight " << ticket.flight_no << ", " << airplanes.at(ticket.flight_no).date
-                    << ", seat " << ticket.seat_number << ", price " << ticket.price
-                    << "$, User: " << ticket.username << endl;
+            if (ticket.getFlightNo() == flight_no && airplanes.at(flight_no).getDate() == date) {
+                cout << "Flight " << ticket.getFlightNo() << ", " << airplanes.at(ticket.getFlightNo()).getDate()
+                    << ", seat " << ticket.getSeatNumber() << ", price " << ticket.getPrice()
+                    << "$, User: " << ticket.getUsername() << endl;
                 found = true;
             }
         }
@@ -217,40 +270,65 @@ public:
             cout << "No tickets found for flight: " << flight_no << " on date: " << date << endl;
         }
     }
-
-
 };
 
 
 
+class FileReader {
+public:
+    static void readFlightsFromFile(const string& filePath, AirlineSystem& system) {
+        ifstream file(filePath);  
+        if (!file.is_open()) {
+            cerr << "Error opening file: " << filePath << endl;
+            return;
+        }
+
+        int flightCount;
+        file >> flightCount;  
+        file.ignore();  
+
+        for (int i = 0; i < flightCount; ++i) {
+            string line;
+            getline(file, line);  
+            Airplane airplane;
+            system.fillAirplaneFromLine(airplane, line);
+            system.airplanes[airplane.getFlightNo()] = airplane;
+
+        }
+
+        file.close();
+        cout << "Successfully read " << flightCount << " flights from the file." << endl;
+    }
+};
+
 int main() {
     AirlineSystem system;
-    Airplane plane1, plane2, plane3;
+    FileReader::readFlightsFromFile("D:/OOPD/OOPD-assigment1/ConsoleApplication1/ConsoleApplication1/configurationFile.txt", system);
 
-    string line1 = "01.01.2023 JK321 8 1-10 100$ 11-20 90$ 21-30 50$";
-    string line2 = "03.01.2023 LM654 9 1-25 95$ 26-50 65$";
-    string line3 = "01.09.2023 JK324 8 1-10 100$ 11-20 90$ 21-30 50$";
-
-    system.fillAirplaneFromLine(plane1, line1);
-    system.fillAirplaneFromLine(plane2, line2);
-    system.fillAirplaneFromLine(plane3, line3);
-
-    system.airplanes[plane1.flight_no] = plane1;
-    system.airplanes[plane2.flight_no] = plane2;
-    system.airplanes[plane3.flight_no] = plane3;
 
     string commands[] = {
-        //"check 01.01.2023 JK321",
-        "book 01.01.2023 JK321 1A AdamSmith",
-        "book 01.01.2023 JK321 2A JohnDoe",
-        //"book 01.01.2023 JK321 1A JoîîîîhnDoe",
-        //"return 1",
-        //"book 01.01.2023 JK321 1A JoîîîîhnDoe",
-        //"view 1",
-        //"view AdamSmith",
-        "view 01.01.2023 JK321",
-    };
 
+        "book 11.12.2022 FQ12 1A AdamSmith",
+        "book 11.12.2022 FQ12 1B AdamSmith",
+        //"book 11.12.2022 FQ12 1C AdamSmith",
+        //"book 11.12.2022 FQ12 1D AdamSmith",
+        //"book 11.12.2022 FQ12 1E AdamSmith",
+        //"book 11.12.2022 FQ12 1F AdamSmith",
+        //"book 11.12.2022 FQ12 1G AdamSmith",
+        //"book 11.12.2022 FQ12 1H AdamSmith",
+        //"book 11.12.2022 FQ12 1I AdamSmith",
+        //"book 11.12.2022 FQ21 1I AdamSmith",
+        "view 10",
+        //"book 11.12.2022 FQ12 1A AdamSmith",
+        //"book 11.12.2022 F5612 1A AdamSmith",
+        //"book 12.12.2022 FQ12 1A AdamSmith",
+        //"book 11.12.2022 FQ12 1A AdamdSmith",
+
+        "check 11.12.2022 FQ12",
+
+        "view 11.12.2022 FQ12",
+        "view 1"
+    };
 
     for (const string& command : commands) {
         istringstream iss(command);
@@ -262,49 +340,28 @@ int main() {
             iss >> date >> flight_no;
             system.checkFlight(date, flight_no);
 
-        }
-        else if (cmd == "book") {
+        } else if (cmd == "book") {
             string date, flight_no, seatId, username;
             iss >> date >> flight_no >> seatId >> username;
             system.bookSeat(date, flight_no, seatId, username);
 
-        }
-        else if (cmd == "return") {
-            int ticketId;
-            iss >> ticketId;
-            system.returnTicket(ticketId);
-
-        }
-        else if (cmd == "view") {
+        } else if (cmd == "view") {
             string param1;
             iss >> param1;
-            cout << "Processing view command with param1: " << param1 << endl;
-
-            
             if (all_of(param1.begin(), param1.end(), ::isdigit)) {  
                 int ticketId = stoi(param1);
-                cout << "Viewing ticket by ID: " << ticketId << endl;
                 system.view(ticketId);
-
-            }
-            else if (param1.find('.') != string::npos) { 
+            } else if (param1.find('.') != string::npos) {  
                 string flight_no;
                 iss >> flight_no;
-                cout << "Viewing tickets for date: " << param1 << " and flight: " << flight_no << endl;
                 system.view(param1, flight_no);
-            }
-            else {  
-                cout << "Viewing tickets for user: " << param1 << endl;
+            } else {  
                 system.view(param1);
             }
-        }
-        else {
+        } else {
             cout << "Unknown command: " << cmd << endl;
         }
     }
 
     return 0;
-
-
 }
-    
