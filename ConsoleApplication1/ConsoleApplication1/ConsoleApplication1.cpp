@@ -196,7 +196,7 @@ public:
             Ticket ticket(ticketCounter++, username, seatId, flight_no, seats[seatId].price);
             tickets[ticket.getId()] = ticket;
 
-            cout << "Booking confirmed with seat ID " << seatId << endl;
+            cout << "Confirmed with ticket ID " << ticket.getId() << endl;
         } else {
             cout << "Seat is already booked.\n";
         }
@@ -214,11 +214,9 @@ public:
         auto& seats = airplane.getSeats();
         if (seats[ticket.getSeatNumber()].status == "booked") {
             seats[ticket.getSeatNumber()].status = "free";
-            cout << "Refund confirmed for " << seats[ticket.getSeatNumber()].price << "$ to " << ticket.getUsername() << endl;
+            cout << "Confirmed " << seats[ticket.getSeatNumber()].price<<"$ refund for " << ticket.getUsername() << endl;
             tickets.erase(ticketId);  
-        } else {
-            cout << "The seat is already free.\n";
-        }
+        } 
     }
 
     void view(int ticketId) const {
@@ -301,36 +299,25 @@ public:
     }
 };
 
-int main() {
+
+void runAirlineSystem() {
     AirlineSystem system;
     FileReader::readFlightsFromFile("D:/OOPD/OOPD-assigment1/ConsoleApplication1/ConsoleApplication1/configurationFile.txt", system);
 
+    string command;
+    while (true) {
+        cout << "> "; 
+        getline(cin, command);  
 
-    string commands[] = {
+        if (command == "exit") {
+            cout << "Exiting the program." << endl;
+            break;  
+        }
 
-        "book 11.12.2022 FQ12 1A AdamSmith",
-        "book 11.12.2022 FQ12 1B AdamSmith",
-        //"book 11.12.2022 FQ12 1C AdamSmith",
-        //"book 11.12.2022 FQ12 1D AdamSmith",
-        //"book 11.12.2022 FQ12 1E AdamSmith",
-        //"book 11.12.2022 FQ12 1F AdamSmith",
-        //"book 11.12.2022 FQ12 1G AdamSmith",
-        //"book 11.12.2022 FQ12 1H AdamSmith",
-        //"book 11.12.2022 FQ12 1I AdamSmith",
-        //"book 11.12.2022 FQ21 1I AdamSmith",
-        "view 10",
-        //"book 11.12.2022 FQ12 1A AdamSmith",
-        //"book 11.12.2022 F5612 1A AdamSmith",
-        //"book 12.12.2022 FQ12 1A AdamSmith",
-        //"book 11.12.2022 FQ12 1A AdamdSmith",
+        if (command.empty()) {
+            continue;  
+        }
 
-        "check 11.12.2022 FQ12",
-
-        "view 11.12.2022 FQ12",
-        "view 1"
-    };
-
-    for (const string& command : commands) {
         istringstream iss(command);
         string cmd;
         iss >> cmd;
@@ -344,6 +331,11 @@ int main() {
             string date, flight_no, seatId, username;
             iss >> date >> flight_no >> seatId >> username;
             system.bookSeat(date, flight_no, seatId, username);
+
+        } else if (cmd == "return") {
+            int ticketId;
+            iss >> ticketId;
+            system.returnTicket(ticketId);
 
         } else if (cmd == "view") {
             string param1;
@@ -362,6 +354,9 @@ int main() {
             cout << "Unknown command: " << cmd << endl;
         }
     }
+}
 
-    return 0;
+int main() {
+    runAirlineSystem();  
+    return 0; 
 }
